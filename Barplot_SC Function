@@ -1,0 +1,119 @@
+Barplot_SC=function(input,min_x=0,Text_cex=1, points=T, 
+                    main="main", 
+                    ylim=c(0,c(max(input,na.rm = TRUE)+3)),
+                    mar=c(6,4,4,4), 
+                    col_Schema=F,
+                    col_Self=c("red", "grey"),
+                    p_values=T,
+                    AbstandxAxe=0.2,
+                    AbstandBalken=0.1,
+                    AbstandPWert=0.1){
+  
+  
+  
+  
+  if(class(input)=="matrix"){len=ncol(input)}else{print("Input needs to be matrix")}
+  par(mar=mar,xaxs = "i",yaxs = "i")
+  maxx=0
+  for(i in 1:ncol(input)){maxx=c(maxx,max(na.omit(input[,i])))}
+  
+  plot(x=c(1,len+1), y=c(c(min_x-c(max(maxx)/29)),max(maxx)), bty="n", type="n",ylab="", xlab="",xaxt="n", main=main,ylim=ylim)
+  
+  if (col_Schema==T){
+   require(RColorBrewer); rf <- colorRampPalette(rev(brewer.pal(9,'Set1')))
+  r <- rf(len)
+  col=sample(r) 
+  } else {col=col_Self}
+  
+  #plot
+  for(i in 1: len){
+    val=na.omit(input[,i])
+    xx=c(i,i,i+0.8,i+0.8 )
+    yy=c(min_x,mean(val), mean(val), min_x)
+    polygon(x=xx,y=yy, col=col[i], border="black", cex=1)
+  }
+  for(i in 1: len){
+    val=na.omit(input[,i])
+    xx=c(i+0.4,i+0.4 )
+    yy=c(mean(val), mean(val)+sd(val))
+    polygon(x=xx,y=yy, col="black",cex=1)
+    
+    xx=c(i+0.3,i+0.5 )
+    yy=c(mean(val)+sd(val), mean(val)+sd(val))
+    polygon(x=xx,y=yy, col="black")
+    
+    
+  }
+  if(points==T){
+    for(i in 1: len){
+      val=na.omit(input[,i])
+      points(x=rnorm(mean=i+0.4, sd=0.05, n=length(val)), y=as.numeric(val))
+    }
+  }
+  
+  if (p_values==T){
+    if(ncol(input)>2){
+      for(i in 1:c(ncol(input)-1)){
+      p=t.test(as.numeric(na.omit(input[,i])),as.numeric(na.omit(input[,i+1])))$p.value
+      text(x=c(i+0.8) ,y=c(max(input,na.rm = TRUE)+i/AbstandPWert), labels = paste("p=",round(p, digits = 3),cex=Text_cex, sep=""))
+      polygon(x=c(i+0.4, i+1.4),y=c(max(input,na.rm = TRUE)+(i/AbstandBalken),max(input,na.rm = TRUE)+(i/AbstandBalken) ), col="black")
+      }
+      
+    }
+    else{
+    p=t.test(as.numeric(na.omit(input[,1])),as.numeric(na.omit(input[,2])))$p.value
+    text(x=1.8 ,y=c(max(input,na.rm = TRUE)+AbstandPWert), labels = paste("p=",round(p, digits = 3),cex=Text_cex, sep=""))
+    polygon(x=c(1.4, 2.4),y=c(max(input,na.rm = TRUE)+AbstandBalken,max(input,na.rm = TRUE)+AbstandBalken ), col="black")
+    }
+  }
+  
+  
+  #put Axisi
+  polygon(x=c(0,len),y=c(0,0), col="black",cex=1)
+  for(i in 1:len){
+    polygon(y=c(c(-max(maxx)/35),max(maxx)/35),x=c(i+0.4,i+0.4), col="black",cex=1)
+  }
+  
+  #input names
+  
+  text(seq(1,len,by=1)+0.4, par("usr")[3]-AbstandxAxe, srt = 60, adj= 1, xpd = TRUE,labels = colnames(input), cex=Text_cex)
+  
+}
+
+Heatmap_signifcance=function(input){
+  sig_m=matrix(NA,ncol(input),ncol(input))
+  for(i in 1:ncol(input)){
+    data_sig1=as.numeric(na.omit(input[,i]))
+    for(j in 1:ncol(input)){
+      data_sig2=as.numeric(na.omit(input[,j])) 
+      require(assertthat)
+      if(are_equal(data_sig1,data_sig2)==F){sig=t.test(data_sig1,data_sig2)$p.value}else{sig=1}
+      sig_m[i,j]=sig
+    }
+  }
+  #multiple Testing
+  for(i in 1: ncol(sig_m)){
+    sig_m[,i]=p.adjust(sig_m[,i], n=length(sig_m[,i]))
+  }
+  #draw heatmap
+  require(RColorBrewer)
+  rf <- colorRampPalette(rev(brewer.pal(9,'Purples')))
+  par(mar=c(6,6,6,6),xaxs = "i",yaxs = "i")
+  image(sig_m,col=rf(11))
+  x_y=seq(from=0, to=1, length.out = ncol(sig_m))
+  
+  for(i in 1: ncol(sig_m)){
+    xxx=x_y[i]
+    for(j in 1: ncol(sig_m)){
+      yyy=x_y[j]
+      if(sig_m[i,j]>0.01){text(x=xxx, y=yyy, labels = "n.s.",cex=2)}
+      if(sig_m[i,j]<0.01 & sig_m[i,j]>0.001){text(x=xxx, y=yyy, labels = "*",cex=3)}
+      if(sig_m[i,j]<0.001 & sig_m[i,j]>0.0001){text(x=xxx, y=yyy, labels = "**",cex=3)}
+      if(sig_m[i,j]<0.0001){text(x=xxx, y=yyy, labels = "***", cex=3)}
+    }
+  }
+}
+map2color<-function(x,pal,limits=NULL){
+  if(is.null(limits)) limits=range(x)
+  pal[findInterval(x,seq(limits[1],limits[2],length.out=length(pal)+1), all.inside=TRUE)]
+}
