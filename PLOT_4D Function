@@ -1,0 +1,113 @@
+Astrocytes=setClass("Astrocytes",slots=c(
+  data="data.frame", 
+  A1_genes="character",
+  A2_genes="character", 
+  fetal_genes="character",
+  adult_genes="character",
+  plot_data_score="data.frame"))
+
+setMethod("initialize",signature = "Astrocytes", definition = function(.Object, data ){
+  .Object@data <- data
+  return(.Object)
+})
+
+
+
+#Save list with top ranked genes from A1,A2,fetal,adult genes
+
+list_genes=readRDS("List_genes.R")
+
+object@A1_genes=List_genes[[1]]
+object@A2_genes=List_genes[[2]]
+object@fetal_genes=List_genes[[3]]
+object@adult_genes=List_genes[[4]]
+
+
+setGeneric("Compute_Scores", function(object) standardGeneric("Compute_Scores"))
+setMethod("Compute_Scores",signature = "Astrocytes", definition = function(object){
+  
+  
+  dat_exp=object@data
+  
+  dim(dat_exp)
+  #Score for each set
+  
+  Score_A1=as.numeric(unlist(lapply(1:ncol(dat_exp), function(i){
+    genes=dat_exp[rownames(dat_exp) %in% object@A1_genes, i]
+    
+    score=mean(genes)/length(genes)
+    
+    return(score)
+    
+  })))
+  Score_A2=-(as.numeric(unlist(lapply(1:ncol(dat_exp), function(i){
+    genes=dat_exp[rownames(dat_exp) %in% object@A2_genes, i]
+    
+    score=mean(genes)/length(genes)
+    
+    return(score)
+    
+  }))))
+  Score_f=as.numeric(unlist(lapply(1:ncol(dat_exp), function(i){
+    genes=dat_exp[rownames(dat_exp) %in% object@fetal_genes, i]
+    
+    score=mean(genes)/length(genes)
+    
+    return(score)
+    
+  })))
+  Score_a=-(as.numeric(unlist(lapply(1:ncol(dat_exp), function(i){
+    genes=dat_exp[rownames(dat_exp) %in% object@adult_genes, i]
+    
+    score=mean(genes)/length(genes)
+    
+    return(score)
+    
+  }))))
+  
+  data_out=data.frame(Score_A1,Score_A2,Score_f,Score_a)
+  object@plot_data_score=data_out
+  
+  return(object)
+  
+})
+
+object=Compute_Scores(object)
+
+setGeneric("PLOT_4D", function(object) standardGeneric("PLOT_4D"))
+setMethod("PLOT_4D",signature = "Astrocytes", definition = function(object){
+  
+  
+  dat=object@plot_data_score
+  
+  dim(dat)
+  
+  #define boarders
+  
+  dat=log(dat)
+  
+  A1max=max(dat[,1])
+  A2min=min(dat[,2])
+  fmax=max(dat[,3])
+  amin=min(dat[,4])
+  
+  col=map2color(Samples_discription[factor, ]$treatment,rainbow(10))
+  
+  plot(x=c(-0.033,-0.01), y=c(0.04,0.065), type="n",axes=T, bty="n", col=col[1])
+  legend(x=0, y=0.13, legend=(Samples_discription[factor, ]$Sample),col=col,pch=19,cex=0.8)
+  
+  for(i in 1:nrow(dat)){
+    points(x=sum(dat[i,1:2]), y=sum(dat[i,3:4]), pch=19,col=col[i])
+  }
+  
+  
+  
+  
+  
+  
+  return(object)
+  
+})
+
+
+
